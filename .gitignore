@@ -1,0 +1,19 @@
+# secrets - never commit
+.env
+
+# local environment
+.venv/
+venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# cached API responses and generated outputs are rebuilt by run.py
+data/raw/
+outputs/
+
+# viewing copies of cached JSON
+*_pretty.json
+
+# executed notebook copies contain data
+*_run.ipynb

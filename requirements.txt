@@ -1,0 +1,4 @@
+# Tested on pandas 2.2.3 and 3.0.5 (identical outputs on both), Python 3.13
+pandas>=2.2
+numpy>=2.0
+requests>=2.32
