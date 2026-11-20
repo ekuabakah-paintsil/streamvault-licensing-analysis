@@ -50,6 +50,7 @@ def main() -> None:
         config.OUTPUTS.mkdir(exist_ok=True)
         check_table.to_csv(config.OUTPUTS / "checks.csv", index=False)
         cache_status.to_csv(config.OUTPUTS / "fetch_record.csv", index=False)
+        pipeline.run_info(cache_status).to_csv(config.OUTPUTS / "run_info.csv", index=False) 
         for name in ["ledger", "films", "quality", "flag_examples", "kpi_segments", "kpi_positions",
                      "kpi_collections", "standalone_ranking", "talent_kpis", "sensitivity", "method_sensitivity", "cast", "crew", "talent"]:
             out[name].to_csv(config.OUTPUTS / f"{name}.csv", index=False)

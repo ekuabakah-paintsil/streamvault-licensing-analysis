@@ -16,9 +16,10 @@ def norm_title(s: pd.Series) -> pd.Series:
 
 def as_of_dates(fetched_at: pd.Series) -> pd.Series:
     """The day each response was fetched (timezone-naive), used as the as-of date.
-    Falls back to today only for a row with no fetch time, which a cached film always has."""
-    stamp = pd.to_datetime(fetched_at, utc=True, errors="coerce").dt.tz_convert(None).dt.normalize()
-    return stamp.fillna(pd.Timestamp.now().normalize())
+    Never the wall clock: the same cache gives the same flags on any day. A row with no fetch
+    time (impossible for a cached film) gets no date, and is then not flagged as unreleased
+    on date grounds; its TMDb release status still applies."""
+    return pd.to_datetime(fetched_at, utc=True, errors="coerce").dt.tz_convert(None).dt.normalize()
 
 
 def add_flags(films: pd.DataFrame) -> pd.DataFrame:

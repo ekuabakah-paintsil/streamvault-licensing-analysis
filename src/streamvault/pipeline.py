@@ -36,6 +36,30 @@ def build_ledger(session=None, fetch_log=None) -> pd.DataFrame:
     return ids.mark_duplicates(led)
 
 
+def run_info(cache_status: pd.DataFrame) -> pd.DataFrame:
+    """Grain: one row per run. Records when the analysis ran, which data it ran on (the fetch
+    window) and with which software, so any difference between two runs can be explained:
+    different data shows in the fetch dates, different software in the versions."""
+    import platform
+
+    import numpy
+    import requests
+
+    fetched = pd.to_datetime(cache_status["movie_fetched_at"], utc=True, errors="coerce")
+    return pd.DataFrame([{
+        "run_at": pd.Timestamp.now(tz="UTC").isoformat(timespec="seconds"),
+        "data_fetched_from": fetched.min().isoformat() if fetched.notna().any() else None,
+        "data_fetched_to": fetched.max().isoformat() if fetched.notna().any() else None,
+        "flags_judged_as_of": "each film's fetch date",
+        "window_cutoff_year": config.WINDOW_CUTOFF_YEAR,
+        "time_budget_seconds": config.TIME_BUDGET_SECONDS,
+        "python": platform.python_version(),
+        "pandas": pd.__version__,
+        "numpy": numpy.__version__,
+        "requests": requests.__version__,
+    }])
+
+
 def as_bool_array(mask: pd.Series):
     """Nullable boolean Series -> plain NumPy bool array, missing treated as False.
     np.select needs plain booleans; pandas' nullable booleans would raise."""

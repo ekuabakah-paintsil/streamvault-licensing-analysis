@@ -21,7 +21,9 @@ It is built to be rerun every quarter by someone other than its author, on a lis
 
 ## What you need
 
-- Python 3.11 or newer. Tested on Python 3.13 with pandas 2.2.3 and 3.0.5, which give identical outputs, and run on Python 3.15 with pandas 3.1.
+- Python 3.11 or newer.
+- Exact versions are pinned in `requirements-lock.txt`: the environment the documented outputs were produced in (Python 3.15.2, pandas 3.1.1). Install from it to reproduce them exactly.
+- `requirements.txt` gives the minimum versions instead, for a machine that already has a different pandas. The code was also tested on pandas 2.2.3 and 3.0.5 and gave identical outputs; every run records the versions it used in `outputs/run_info.csv`.
 - A free TMDb API key, needed only when something has not been fetched yet. Register at themoviedb.org, then Settings, API. The v3 "API Key" and the v4 "API Read Access Token" both work.
 
 ## Setup (once, about 5 minutes)
@@ -30,7 +32,8 @@ It is built to be rerun every quarter by someone other than its author, on a lis
 python -m venv .venv
 .venv\Scripts\activate          # Windows (PowerShell)
 source .venv/bin/activate       # macOS / Linux
-pip install -r requirements.txt
+pip install -r requirements-lock.txt   # exact versions (recommended)
+# or: pip install -r requirements.txt   # minimum versions, if you must keep an existing pandas
 ```
 
 Then put your key in a file called `.env` in this folder, next to `run.py`:
@@ -127,6 +130,7 @@ In this order, from this folder:
 | `bundle_members.csv` | film in a franchise | Every franchise film, on or off the list |
 | `bundle_headline.csv` | window | Franchise against standalone with complete bundles |
 | `spot_check.csv` | film and field | Output against live TMDb, each difference classified |
+| `run_info.csv` | run | When the analysis ran, the fetch window of the data it used, and the software versions, so two runs can be compared |
 | `timing.csv`, `timing_history.csv` | stage, per run | Measured time of the last run, and of every run |
 | `benchmark.csv` | list size | Median, p95 and worst time at 112 to 2,000 titles |
 
