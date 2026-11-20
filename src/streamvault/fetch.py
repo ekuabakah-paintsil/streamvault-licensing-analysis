@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pandas as pd
 import requests
@@ -42,7 +43,7 @@ def make_session() -> requests.Session:
     return s
 
 
-def _cache_path(endpoint: str, key) -> "config.Path":
+def _cache_path(endpoint: str, key) -> Path:
     return config.RAW / endpoint / f"{key}.json"
 
 

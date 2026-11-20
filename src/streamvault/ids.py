@@ -55,14 +55,14 @@ def parse(raw: pd.DataFrame) -> pd.DataFrame:
 def apply_imdb_resolution(led: pd.DataFrame, resolved: dict[str, int | None]) -> pd.DataFrame:
     """Fill in TMDb ids for IMDb-format lines using a {imdb_id: tmdb_id or None} map."""
     led = led.copy()
-    mask = led["id_status"].eq("imdb_id_needs_resolving")
-    mapped = led.loc[mask, "raw_value"].str.strip().map(resolved)
-    found = mapped.notna()
-    led.loc[mask[mask].index[found], "tmdb_id"] = mapped[found].astype("int64")
-    led.loc[mask[mask].index[found], "id_status"] = "candidate"
-    led.loc[mask[mask].index[found], "note"] = (
-        "resolved from IMDb id " + led.loc[mask[mask].index[found], "raw_value"].str.strip())
-    led.loc[mask[mask].index[~found], "id_status"] = "excluded_imdb_unresolved"
+    imdb_lines = led["id_status"].eq("imdb_id_needs_resolving")
+    mapped = led.loc[imdb_lines, "raw_value"].str.strip().map(resolved)
+    resolved_idx = mapped.index[mapped.notna()]      # IMDb lines with exactly one TMDb match
+    unresolved_idx = mapped.index[mapped.isna()]     # IMDb lines with no single match
+    led.loc[resolved_idx, "tmdb_id"] = mapped[resolved_idx].astype("int64")
+    led.loc[resolved_idx, "id_status"] = "candidate"
+    led.loc[resolved_idx, "note"] = "resolved from IMDb id " + led.loc[resolved_idx, "raw_value"].str.strip()
+    led.loc[unresolved_idx, "id_status"] = "excluded_imdb_unresolved"
     return led
 
 

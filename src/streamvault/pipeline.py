@@ -36,6 +36,12 @@ def build_ledger(session=None, fetch_log=None) -> pd.DataFrame:
     return ids.mark_duplicates(led)
 
 
+def as_bool_array(mask: pd.Series):
+    """Nullable boolean Series -> plain NumPy bool array, missing treated as False.
+    np.select needs plain booleans; pandas' nullable booleans would raise."""
+    return mask.fillna(False).astype(bool).to_numpy()
+
+
 def finalise_ledger(led: pd.DataFrame, cache_status: pd.DataFrame, f: pd.DataFrame) -> pd.DataFrame:
     """Attach what happened to every candidate after fetching and scoping. Grain stays
     one row per line of the source file; the merges are validated so no line is lost or doubled."""
@@ -47,18 +53,17 @@ def finalise_ledger(led: pd.DataFrame, cache_status: pd.DataFrame, f: pd.DataFra
                     on="tmdb_id", how="left", validate="many_to_one")
     assert len(out) == n, "ledger row count changed during merge"
 
-    b = lambda s: s.fillna(False).astype(bool).to_numpy()      # nullable -> plain bool for np.select
     cand = out["id_status"].eq("candidate").to_numpy()
     ms = out["movie_status"].astype("string")
     in_scope = out["in_scope"].astype("boolean")
     usable = out["usable_financials"].astype("boolean")
     out["final_status"] = np.select(
         [~cand,
-         cand & b(ms.eq("404")),
-         cand & b(ms.isna() | ms.eq("not_fetched")),
-         cand & b(in_scope.eq(False)),
-         cand & b(usable.eq(True)),
-         cand & b(usable.eq(False))],
+         cand & as_bool_array(ms.eq("404")),
+         cand & as_bool_array(ms.isna() | ms.eq("not_fetched")),
+         cand & as_bool_array(in_scope.eq(False)),
+         cand & as_bool_array(usable.eq(True)),
+         cand & as_bool_array(usable.eq(False))],
         [out["id_status"],
          "excluded_not_found_on_tmdb",
          "excluded_fetch_failed",
@@ -68,14 +73,15 @@ def finalise_ledger(led: pd.DataFrame, cache_status: pd.DataFrame, f: pd.DataFra
         default="unexplained",
     )
     scope_reason = np.select(
-        [b(out["flag_not_released"].astype("boolean")), b(out["flag_short_runtime"].astype("boolean")),
-         b(out["flag_adult_or_video"].astype("boolean"))],
+        [as_bool_array(out["flag_not_released"].astype("boolean")),
+         as_bool_array(out["flag_short_runtime"].astype("boolean")),
+         as_bool_array(out["flag_adult_or_video"].astype("boolean"))],
         ["not released", "short (<40 min)", "adult/video release"], default="")
     out["note"] = np.select(
         [out["final_status"].eq("excluded_out_of_scope").to_numpy(),
          out["final_status"].eq("excluded_not_found_on_tmdb").to_numpy(),
          out["final_status"].eq("excluded_fetch_failed").to_numpy(),
-         b(out["flag_id_redirected"].astype("boolean"))],
+         as_bool_array(out["flag_id_redirected"].astype("boolean"))],
         [scope_reason,
          "TMDb returned 404: id does not exist (or was deleted)",
          "request failed after retries; re-run to retry",
