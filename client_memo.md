@@ -1,7 +1,9 @@
 # Memo to Kwame
 
 **From:** Ekua Micah Abakah-Paintsil
+
 **Date:** 19 November 2026
+
 **Subject:** Franchise bundles or standalone hits
 
 ## What I found
