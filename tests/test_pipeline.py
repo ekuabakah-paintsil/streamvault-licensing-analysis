@@ -84,6 +84,19 @@ def test_real_id_list_reconciles(tmp: Path):
     print(counts.to_string(), "\n")
 
 
+NOTEBOOK = ROOT / "explore" / "profile_candidates.ipynb"
+
+
+def test_notebook_has_no_saved_outputs():
+    """The profiling notebook is committed without outputs, so no data enters version control.
+    Run `jupyter nbconvert --clear-output --inplace explore/profile_candidates.ipynb` to fix."""
+    nb = json.loads(NOTEBOOK.read_text(encoding="utf-8"))
+    dirty = [i for i, c in enumerate(nb["cells"])
+             if c["cell_type"] == "code" and (c.get("outputs") or c.get("execution_count"))]
+    assert not dirty, f"notebook cells with saved outputs: {dirty}; clear them before committing"
+    print(f"Notebook {NOTEBOOK.name}: {len(nb['cells'])} cells, none with saved outputs.\n")
+
+
 def time_at(n: int, tmp: Path) -> float:
     movies = [dict(fake_movie(i, max(5, n // 12)), _requested_id=i, _fetched_at="x") for i in range(1, n + 1)]
     credits = [dict(fake_credits(i), _requested_id=i) for i in range(1, n + 1)]
@@ -95,6 +108,7 @@ def time_at(n: int, tmp: Path) -> float:
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as d:
         test_real_id_list_reconciles(Path(d))
+        test_notebook_has_no_saved_outputs()
         print("Analysis-stage timing on synthetic data (seconds):")
         base = None
         for n in (127, 500, 5000):

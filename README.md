@@ -62,7 +62,7 @@ In this order, from this folder:
 
 **In a meeting, or without internet:** `python run.py --offline` and `python improvement/bundle_check.py --offline` use the cache only and make no requests.
 
-**Expected result** (data as of 18 November 2026): 127 lines, 117 distinct ids, 112 films analysed; franchise 5.62x against standalone 3.84x per film (all years) and 5.05x against 3.84x (2000 on); 10 of 10 quality checks passed; the analysis inside the 5-second budget.
+**Expected result** (data fetched from TMDb on 18 November 2026, 12:19 to 12:21 UTC, the actual fetch date, stamped on every cached response and in `outputs/run_info.csv`; the brief's 31 October board review is the scenario date, and a refetch on 20 November gave identical figures, see `evidence/clean_clone_test.txt`): 127 lines, 117 distinct ids, 112 films analysed; franchise 5.62x against standalone 3.84x per film (all years) and 5.05x against 3.84x (2000 on); 10 of 10 quality checks passed; the analysis inside the 5-second budget.
 
 ## Rerunning next quarter
 
@@ -80,7 +80,7 @@ In this order, from this folder:
 | `TMDb refused the key (HTTP 401)` | The key is wrong, or the line is not named `TMDB_API_KEY` | Check `.env`. The run stops at once instead of making failed requests |
 | `No cached films found` | `--offline` used before anything was fetched | Run once without `--offline` |
 | `Quality checks failed, no outputs written` | The analysis lost, doubled or misplaced a film | The message names the failed checks. Nothing is written, so no half-wrong file reaches a meeting |
-| `Analysis stage: ... (OVER the 5s budget)` | The laptop is much slower, or the list is far larger | See `measurement_report.md` and ADR-005 for the documented fix |
+| `Analysis stage: ... (OVER the 5s budget)` | The laptop is much slower, or the list is far larger | See [`measurement_report.md`](measurement_report.md) and [`decisions/ADR-005-fetch-once-and-hold-a-5-second-budget.md`](decisions/ADR-005-fetch-once-and-hold-a-5-second-budget.md) for the documented fix |
 | Requests time out | Network or TMDb trouble | Run again. Only the missing ids are fetched; failed requests are never cached |
 | One run takes several seconds after updating the code | The trimmed cache copy is being rebuilt from the per-film files, once | Nothing to fix; the next run is back to about 1 s |
 
@@ -94,7 +94,7 @@ In this order, from this folder:
 | `improvement/` | The bundle completeness check and its write-up | The improvement beyond the brief, kept apart from the brief's core work |
 | `spot_check.py` | Live reconciliation of the output against TMDb | Checks the analysis from outside it |
 | `present_ids.py` | The presentation page for the 127 lines | For the room, not for the analysis |
-| `explore/` | `profile_candidates.ipynb`: profiles the raw list and TMDb's raw answers | Investigation, independent of the analysis. Clear all outputs before committing |
+| `explore/` | `profile_candidates.ipynb`: profiles the raw list and TMDb's raw answers | Investigation, independent of the analysis. Committed with no saved outputs, so no data is in version control; `tests/test_pipeline.py` fails if any cell has outputs |
 | `tests/` | Self-test (on a frozen copy of this year's list) and the benchmark | Prove the code works before it touches real data |
 | `decisions/` | Architecture decision records, ADR-001 to ADR-005 | The reasons behind the code, versioned with it |
 | `data_diagnosis.md` | Every problem in the data, ranked by risk, and where every line went | Deliverable: data diagnosis |

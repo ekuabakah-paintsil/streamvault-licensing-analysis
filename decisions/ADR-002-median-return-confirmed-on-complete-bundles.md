@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-19
-- **Decision owner:** Senya
+- **Decision owner:** Ekua Micah Abakah-Paintsil
 
 ## Context
 
