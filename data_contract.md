@@ -55,4 +55,6 @@ If more than 5% of films (`QUARANTINE_MAX_SHARE` in `config.py`) break the contr
 - The quality gate checks that every film TMDb returned is either analysed or quarantined.
 - Nothing is deleted from the cache in `data/raw/`; a fixed record at TMDb is picked up on the next fetch.
 
-Author: WISDOMSKA (SENYA)
+On the data fetched on 18 November 2026, all 112 films, 1,119 cast rows and 122 crew rows passed every rule; nothing was quarantined (`outputs/validation.csv`).
+
+Author: Ekua Micah Abakah-Paintsil
