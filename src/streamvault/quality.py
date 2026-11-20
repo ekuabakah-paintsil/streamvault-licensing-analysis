@@ -51,15 +51,16 @@ def add_flags(films: pd.DataFrame) -> pd.DataFrame:
 
 
 def quality_report(films: pd.DataFrame, stage: str) -> pd.DataFrame:
-    """Grain: one row per check. Called after load, after flagging, after joins."""
+    """Grain: one row per check; `count` is always a whole number (films affected), so the
+    table can be summed and compared without converting text back to numbers."""
     checks = {
         "rows": len(films),
-        "tmdb_id_unique": bool(films["tmdb_id"].is_unique),
+        "duplicate_tmdb_ids": int(films["tmdb_id"].duplicated().sum()),
         "null_title": int(films["title"].isna().sum()),
     }
     for col in [c for c in films.columns if c.startswith("flag_")]:
         checks[col] = int(films[col].sum())
-    out = pd.DataFrame({"check": list(checks), "value": [str(v) for v in checks.values()]})
+    out = pd.DataFrame({"check": list(checks), "count": pd.Series(list(checks.values()), dtype="int64")})
     out.insert(0, "stage", stage)
     return out
 

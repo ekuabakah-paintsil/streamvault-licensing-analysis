@@ -54,12 +54,12 @@ def finalise_ledger(led: pd.DataFrame, cache_status: pd.DataFrame, f: pd.DataFra
     assert len(out) == n, "ledger row count changed during merge"
 
     cand = out["id_status"].eq("candidate").to_numpy()
-    ms = out["movie_status"].astype("string")
+    ms = out["movie_status"]                                   # FETCH_STATE; missing if never requested
     in_scope = out["in_scope"].astype("boolean")
     usable = out["usable_financials"].astype("boolean")
     out["final_status"] = np.select(
         [~cand,
-         cand & as_bool_array(ms.eq("404")),
+         cand & as_bool_array(ms.eq("not_found")),
          cand & as_bool_array(ms.isna() | ms.eq("not_fetched")),
          cand & as_bool_array(in_scope.eq(False)),
          cand & as_bool_array(usable.eq(True)),

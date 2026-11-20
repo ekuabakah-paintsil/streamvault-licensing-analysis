@@ -29,6 +29,16 @@ ENDPOINTS = {"movie": "/movie/{id}", "credits": "/movie/{id}/credits"}   # fetch
 EXTRA_ENDPOINTS = {"collection": "/collection/{id}"}                        # used by the bundle check only
 
 
+# What the cache holds for one id at one endpoint. A fixed set of categories, so a typo such
+# as "Found" or "200" cannot silently fail to match. The HTTP code is kept separately, as a number.
+FETCH_STATE = pd.CategoricalDtype(["found", "not_found", "not_fetched"])
+
+
+def fetch_state(http_status: pd.Series) -> pd.Series:
+    """Nullable HTTP status codes -> FETCH_STATE: 200 found, 404 not_found, missing not_fetched."""
+    return http_status.map({200: "found", 404: "not_found"}).fillna("not_fetched").astype(FETCH_STATE)
+
+
 class AuthError(SystemExit):
     pass
 
@@ -207,7 +217,8 @@ def _read_bundle(endpoint: str, ids) -> dict | None:
 
 def load_cache(ids) -> tuple[list[dict], list[dict], pd.DataFrame]:
     """Read cached responses from the two bundle files. Returns movie bodies, credits bodies
-    and a status table (grain: one row per requested id) recording what the cache holds."""
+    and a status table (grain: one row per requested id) recording what the cache holds:
+    for each endpoint, the HTTP code as a nullable integer and the state as FETCH_STATE."""
     ids = [int(i) for i in ids]
     bundles = {e: _read_bundle(e, ids) for e in ENDPOINTS}
     if any(b is None for b in bundles.values()):           # missing or stale: rebuild once
@@ -219,9 +230,8 @@ def load_cache(ids) -> tuple[list[dict], list[dict], pd.DataFrame]:
         for endpoint, sink in (("movie", movies), ("credits", credits)):
             payload = bundles[endpoint].get(str(tmdb_id))
             if payload is None:
-                row[f"{endpoint}_status"] = "not_fetched"
-                continue
-            row[f"{endpoint}_status"] = str(payload["_http_status"])   # text: mixes with "not_fetched"
+                continue                                     # absent -> http code missing -> not_fetched
+            row[f"{endpoint}_http_status"] = int(payload["_http_status"])
             row[f"{endpoint}_fetched_at"] = payload["_fetched_at"]
             if payload["body"] is not None:
                 body = dict(payload["body"])
@@ -229,4 +239,9 @@ def load_cache(ids) -> tuple[list[dict], list[dict], pd.DataFrame]:
                 body["_fetched_at"] = payload["_fetched_at"]
                 sink.append(body)
         rows.append(row)
-    return movies, credits, pd.DataFrame(rows)
+    status = pd.DataFrame(rows, columns=["tmdb_id", "movie_http_status", "movie_fetched_at",
+                                         "credits_http_status", "credits_fetched_at"])
+    for endpoint in ENDPOINTS:
+        status[f"{endpoint}_http_status"] = status[f"{endpoint}_http_status"].astype("Int64")
+        status[f"{endpoint}_status"] = fetch_state(status[f"{endpoint}_http_status"])
+    return movies, credits, status

@@ -55,7 +55,7 @@ def main() -> None:
     head.to_csv(config.OUTPUTS / "bundle_headline.csv", index=False)
 
     calls = sum(1 for e in log if e.get("source") == "network")
-    not_fetched = coll_status["collection_status"].ne("200").sum()
+    not_fetched = coll_status["collection_status"].ne("found").sum()
     print(f"Franchises checked: {len(coll_ids)} (lists missing: {not_fetched}) | "
           f"films across them: {len(members)} | not on the candidate list: "
           f"{int((~per_member['on_list']).sum())} | network calls this run: {calls}")

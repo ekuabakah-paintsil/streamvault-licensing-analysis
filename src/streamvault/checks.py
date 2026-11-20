@@ -19,7 +19,7 @@ class ChecksFailed(Exception):
 def _results(out: dict, cache_status: pd.DataFrame) -> list[tuple[str, bool, str]]:
     led, films, cast, crew, talent = (out[k] for k in ("ledger", "films", "cast", "crew", "talent"))
     seg = out["kpi_segments"]
-    found = int(cache_status["movie_status"].eq("200").sum())
+    found = int(cache_status["movie_status"].eq("found").sum())
     counts = led["final_status"].value_counts()
     in_scope = films.loc[films["in_scope"]]
     per_window = {"all_years": len(in_scope), "2000_on": int(in_scope["window_2000_on"].sum())}

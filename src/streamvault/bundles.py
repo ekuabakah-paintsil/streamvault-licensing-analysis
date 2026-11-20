@@ -34,22 +34,24 @@ def load_members(coll_ids) -> tuple[pd.DataFrame, pd.DataFrame]:
     for cid in coll_ids:
         payload = fetch.read_cached("collection", int(cid))
         if payload is None:
-            status.append({"collection_id": int(cid), "collection_status": "not_fetched"})
+            status.append({"collection_id": int(cid)})
             continue
-        status.append({"collection_id": int(cid), "collection_status": str(payload["_http_status"]),
+        status.append({"collection_id": int(cid), "collection_http_status": int(payload["_http_status"]),
                        "collection_fetched_at": payload["_fetched_at"]})
         if payload["body"]:
             bodies.append(payload["body"])
+    status = pd.DataFrame(status, columns=["collection_id", "collection_http_status", "collection_fetched_at"])
+    status["collection_http_status"] = status["collection_http_status"].astype("Int64")
+    status["collection_status"] = fetch.fetch_state(status["collection_http_status"])
     if not bodies:
-        return pd.DataFrame(columns=["collection_id", "collection_name", "member_id", "member_title"]), \
-            pd.DataFrame(status)
+        return pd.DataFrame(columns=["collection_id", "collection_name", "member_id", "member_title"]), status
     members = pd.json_normalize(bodies, record_path="parts", meta=["id", "name"], meta_prefix="collection_")
     members = (members.rename(columns={"id": "member_id", "title": "member_title",
                                        "release_date": "listed_release_date"})
                [["collection_id", "collection_name", "member_id", "member_title"]]
                .astype({"collection_id": "int64", "member_id": "int64"}))
     assert not members.duplicated(["collection_id", "member_id"]).any(), "a franchise lists a film twice"
-    return members, pd.DataFrame(status)
+    return members, status
 
 
 def fetch_member_details(session, member_ids, log) -> None:
