@@ -52,7 +52,7 @@ def main() -> None:
         cache_status.to_csv(config.OUTPUTS / "fetch_record.csv", index=False)
         pipeline.run_info(cache_status).to_csv(config.OUTPUTS / "run_info.csv", index=False) 
         for name in ["ledger", "films", "quality", "flag_examples", "kpi_segments", "kpi_positions",
-                     "kpi_collections", "standalone_ranking", "talent_kpis", "sensitivity", "method_sensitivity", "cast", "crew", "talent"]:
+                     "kpi_collections", "standalone_ranking", "talent_kpis", "sensitivity", "method_sensitivity", "cast", "crew", "talent", "quarantine","validation"]:
             out[name].to_csv(config.OUTPUTS / f"{name}.csv", index=False)
         if log:
             log_path = config.OUTPUTS / "fetch_log.csv"
