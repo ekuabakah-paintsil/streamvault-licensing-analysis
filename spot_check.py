@@ -16,7 +16,6 @@ as whole dollars, so any difference is a real difference, not float noise).
 """
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -98,11 +97,8 @@ def main() -> None:
     rows = []
     for _, film in sample.iterrows():       # loop over ~12 network calls, not over analysis rows
         fid = int(film["tmdb_id"])
-        cache = extract(json.loads((config.RAW / "movie" / f"{fid}.json").read_text(encoding="utf-8"))["body"],
-                        json.loads((config.RAW / "credits" / f"{fid}.json").read_text(encoding="utf-8"))["body"])
-        _, live_movie = fetch._get(session, f"{config.API_BASE}/movie/{fid}")
-        _, live_credits = fetch._get(session, f"{config.API_BASE}/movie/{fid}/credits")
-        live = extract(live_movie, live_credits)
+        cache = extract(fetch.read_cached("movie", fid)["body"], fetch.read_cached("credits", fid)["body"])
+        live = extract(fetch.get_live(session, "movie", fid), fetch.get_live(session, "credits", fid))
         table = {"title": film["title"], "release_date": film["release_date"],
                  "budget": film["budget"], "revenue": film["revenue"], "collection_id": film["collection_id"],
                  "director": our_dir.get(fid), "lead_actor": our_lead.get(fid)}
@@ -130,4 +126,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    

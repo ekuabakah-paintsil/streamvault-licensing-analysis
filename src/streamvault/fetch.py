@@ -111,6 +111,21 @@ def resolve_imdb_ids(session, imdb_ids: list[str], log: list) -> dict[str, int |
     return out
 
 
+def read_cached(endpoint: str, key) -> dict | None:
+    """Public accessor for one cached response: the stored payload ({"_fetched_at",
+    "_http_status", "body"}), or None if that id has not been fetched for this endpoint.
+    Other modules use this instead of building cache paths themselves."""
+    path = _cache_path(endpoint, key)
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def get_live(session, endpoint: str, key) -> dict | None:
+    """Public accessor for one live response, bypassing the cache (used by the spot-check).
+    Returns the response body, or None if TMDb answers 'not found'."""
+    url = config.API_BASE + {**ENDPOINTS, **EXTRA_ENDPOINTS}[endpoint].format(id=key)
+    return _get(session, url)[1]
+
+
 def fetch_all(session, ids, log: list) -> None:
     ids = list(ids)
     for i, tmdb_id in enumerate(ids, 1):

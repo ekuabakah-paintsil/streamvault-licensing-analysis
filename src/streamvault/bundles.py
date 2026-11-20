@@ -10,7 +10,6 @@ Network calls go through fetch.fetch_one, so the same rules apply: cached, throt
 """
 from __future__ import annotations
 
-import json
 
 import numpy as np
 import pandas as pd
@@ -32,11 +31,10 @@ def load_members(coll_ids) -> tuple[pd.DataFrame, pd.DataFrame]:
     Also returns a status table, one row per franchise, so a missing list is visible."""
     bodies, status = [], []
     for cid in coll_ids:
-        p = fetch._cache_path("collection", int(cid))
-        if not p.exists():
+        payload = fetch.read_cached("collection", int(cid))
+        if payload is None:
             status.append({"collection_id": int(cid), "collection_status": "not_fetched"})
             continue
-        payload = json.loads(p.read_text(encoding="utf-8"))
         status.append({"collection_id": int(cid), "collection_status": str(payload["_http_status"]),
                        "collection_fetched_at": payload["_fetched_at"]})
         if payload["body"]:
@@ -62,11 +60,9 @@ def load_member_details(member_ids) -> pd.DataFrame:
     """Grain: one row per member film with a cached details response."""
     bodies = []
     for mid in member_ids:
-        p = fetch._cache_path("movie", int(mid))
-        if p.exists():
-            payload = json.loads(p.read_text(encoding="utf-8"))
-            if payload["body"]:
-                bodies.append(dict(payload["body"], _requested_id=int(mid), _fetched_at=payload["_fetched_at"]))
+        payload = fetch.read_cached("movie", int(mid))
+        if payload and payload["body"]:
+            bodies.append(dict(payload["body"], _requested_id=int(mid), _fetched_at=payload["_fetched_at"]))
     return flatten.films_table(bodies)
 
 

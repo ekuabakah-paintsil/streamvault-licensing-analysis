@@ -3,7 +3,6 @@ Whether a flagged row is excluded, and from which metric, is a cleaning rule
 in analysis.py, so its impact can be measured both ways."""
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 SUSPECT_MONEY = 1_000          # budgets/revenues under $1,000 are almost certainly unit errors (e.g. "7" meaning $7M)

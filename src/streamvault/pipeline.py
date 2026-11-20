@@ -107,25 +107,27 @@ def run_analysis(movies, credits, cache_status, ledger, timer: Timer) -> dict:
     with timer.stage("reconcile_ledger"):
         final_ledger = finalise_ledger(ledger, cache_status, f) if ledger is not None else None
     with timer.stage("kpis_both_windows"):
-        seg, pos, coll, stand, tal = [], [], [], [], []
-        for w in ("all_years", "2000_on"):
-            fw = analysis.window(f, w)
-            seg.append(analysis.segment_kpis(fw).assign(window=w))
-            pos.append(analysis.position_kpis(fw).assign(window=w))
-            coll.append(analysis.collection_kpis(fw).assign(window=w))
-            stand.append(analysis.standalone_ranking(fw).assign(window=w))
-            tal.append(analysis.talent_kpis(fw, talent).assign(window=w))
+        # Each output table is built by one function, run once per window, then stacked.
+        builders = {
+            "kpi_segments": analysis.segment_kpis,
+            "kpi_positions": analysis.position_kpis,
+            "kpi_collections": analysis.collection_kpis,
+            "standalone_ranking": analysis.standalone_ranking,
+            "talent_kpis": lambda fw: analysis.talent_kpis(fw, talent),
+        }
+        kpis = {name: pd.concat([build(analysis.window(f, w)).assign(window=w)
+                                 for w in ("all_years", "2000_on")])
+                for name, build in builders.items()}
+        # segment and position tables are indexed by group; keep that group as a column
+        kpis["kpi_segments"] = kpis["kpi_segments"].reset_index()
+        kpis["kpi_positions"] = kpis["kpi_positions"].reset_index()
     with timer.stage("sensitivity"):
         sens = analysis.sensitivity(flagged)
         method_sens = analysis.method_sensitivity(f)
     return {
         "films": f, "cast": cast, "crew": crew, "talent": talent, "quality": q, "flag_examples": examples,
         "ledger": final_ledger,
-        "kpi_segments": pd.concat(seg).reset_index(),
-        "kpi_positions": pd.concat(pos).reset_index(),
-        "kpi_collections": pd.concat(coll),
-        "standalone_ranking": pd.concat(stand),
-        "talent_kpis": pd.concat(tal),
+        **kpis,
         "sensitivity": sens,
         "method_sensitivity": method_sens,
     }
