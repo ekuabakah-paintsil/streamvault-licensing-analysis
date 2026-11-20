@@ -1,0 +1,68 @@
+Clean-clone test, 20 November 2026
+Fresh clone of the GitHub repository into a new, empty folder on the analyst's laptop, set up by
+following README.md only: create .venv, pip install -r requirements.txt, copy .env.example to .env
+and add the TMDb key (the one manual step), then run the two commands below. No cache, no outputs
+and no files were copied from the working folder. The fetch is a brand-new pull from TMDb, two days
+after the original one on 18 November, and every figure matches.
+
+> python tests/test_pipeline.py
+
+Reconciliation on the frozen 2026 id list (fake API data):
+final_status
+analysed_full                    81
+analysed_no_usable_financials    26
+excluded_duplicate                7
+excluded_out_of_scope             5
+excluded_not_found_on_tmdb        5
+excluded_invalid_number           1
+excluded_blank_line               1
+excluded_not_an_id                1
+
+Analysis-stage timing on synthetic data (seconds):
+    127 titles: 0.323s  (1.0x the 127-title time)
+    500 titles: 0.285s  (0.9x the 127-title time)
+   5000 titles: 0.626s  (1.9x the 127-title time)
+
+All checks passed.
+
+> python run.py
+
+Source lines: 127 | unique candidate ids: 117
+  fetched 25/117 ids  (network calls so far: 51)
+  fetched 50/117 ids  (network calls so far: 101)
+  fetched 75/117 ids  (network calls so far: 151)
+  fetched 100/117 ids  (network calls so far: 201)
+  fetched 117/117 ids  (network calls so far: 235)
+
+Where every source line went:
+final_status
+analysed_full                 112
+excluded_duplicate              7
+excluded_not_found_on_tmdb      5
+excluded_invalid_number         1
+excluded_blank_line             1
+excluded_not_an_id              1
+
+Franchise vs standalone (median revenue/budget, usable n):
+  all_years  franchise 5.62x (n=96)   standalone 3.84x (n=16)
+  2000_on    franchise 5.05x (n=63)   standalone 3.84x (n=8)
+
+Cleaning-rule variants that flip the answer: 0
+
+Network calls this run: 235
+Analysis stage: 0.395s (WITHIN the 5s budget)
+
+Quality gate: 10 of 10 checks passed
+
+Per stage:
+                                      stage  seconds
+acquisition (network, excluded from budget)   92.728
+                                 load_cache    0.051
+                                    flatten    0.029
+                             flag_and_check    0.019
+                                    prepare    0.008
+                           reconcile_ledger    0.010
+                          kpis_both_windows    0.091
+                                sensitivity    0.142
+                               quality_gate    0.003
+                              write_outputs    0.042
