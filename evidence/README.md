@@ -18,4 +18,4 @@ Console output saved from key runs on the analyst's laptop (Windows 11). These a
 | `bundle_check.txt` | The improvement: each franchise on the list compared with the whole franchise at TMDb | `improvement/improvement.md` |
 | `bundle_gaps.txt` | Franchise films missing from the list that have no usable figures, or are not yet released | `improvement/improvement.md` |
 
-Author: WISDOMSKA (SENYA)
+Author: Ekua Micah Abakah-Paintsil
