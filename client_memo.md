@@ -8,7 +8,7 @@
 
 ## What I found
 
-**Franchise bundles are the safer buy, by a modest margin.** Counting every film a studio would sell, the typical bundle earned 4.4 times its production cost against 3.8 for the typical standalone hit; from 2000 on, 4.5 against 3.8. **The answer is the same in both windows**, and inflation cancels out, as each film is compared with its own cost. The advantage is reliability, not size.
+**Franchise bundles are the safer buy, by a modest margin.** Counting every film a studio would sell, the typical bundle earned 4.4 times its production cost against 3.8 for the typical standalone hit; from 2000 on, 4.5 against 3.8. **The answer is the same in both windows**, and inflation cancels out, as each film is compared with its own cost. I compare whole bundles with single films because that is how each is sold; film by film, the franchise lead is larger still (5.1 against 3.8).
 
 **Your list flatters franchises:** counting their missing sequels cut the typical bundle's return by a fifth (Jaws: 67 times alone, 11 for all four films).
 

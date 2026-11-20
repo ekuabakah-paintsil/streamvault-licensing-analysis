@@ -1,7 +1,7 @@
 """Improvement beyond the brief: is each franchise bundle as good as the list makes it look?
 
-    python bundle_check.py             # after run.py; fetches what is not cached yet
-    python bundle_check.py --offline   # cached data only, no network
+    python improvement/bundle_check.py             # after run.py; fetches what is not cached yet
+    python improvement/bundle_check.py --offline   # cached data only, no network
 
 The candidate list mostly holds each franchise's best-known films, but a bundle is sold whole.
 This fetches every franchise's complete film list, then the figures for the films the list left
@@ -47,7 +47,7 @@ def main() -> None:
     details = bundles.load_member_details(member_ids)
 
     per_member, per_bundle = bundles.completeness(films, members, details)
-    head = bundles.headline(films, per_bundle)
+    head = bundles.headline(films, per_bundle, per_member)
 
     config.OUTPUTS.mkdir(exist_ok=True)
     per_bundle.to_csv(config.OUTPUTS / "bundle_completeness.csv", index=False)

@@ -46,7 +46,15 @@ def prepare(films: pd.DataFrame, rules: Rules = BASELINE) -> pd.DataFrame:
         budget = budget.where(~f["flag_budget_suspect"])
         revenue = revenue.where(~f["flag_revenue_suspect"])
 
-    usable = in_scope & budget.gt(0).fillna(False) & revenue.notna()
+    # Budget and revenue are deliberately treated differently:
+    # - budget must be > 0, because it is the denominator; a $0 budget cannot give a return.
+    # - revenue must only be present. Under the baseline rule a $0 revenue has already been
+    #   set to missing above (TMDb uses 0 for "not entered"), so it is excluded here too.
+    #   Only when that rule is switched off is $0 revenue kept, as a genuine total loss
+    #   (return 0x), which is the point of testing that alternative.
+    has_budget = budget.gt(0).fillna(False)
+    has_revenue = revenue.notna()
+    usable = in_scope & has_budget & has_revenue
     f["in_scope"] = in_scope
     f["usable_financials"] = usable
     f["return_multiple"] = (revenue / budget).where(usable)

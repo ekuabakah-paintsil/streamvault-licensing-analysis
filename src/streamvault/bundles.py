@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 
 from . import config, fetch, flatten
+from .quality import as_of_dates
 
 
 def collection_ids(films: pd.DataFrame) -> list[int]:
@@ -72,14 +73,14 @@ def completeness(films: pd.DataFrame, members: pd.DataFrame, details: pd.DataFra
     per_member grain: one row per franchise per member film.
     per_bundle grain: one row per franchise."""
     n = len(members)
-    m = members.merge(details[["tmdb_id", "release_date", "release_year", "release_status",
+    m = members.merge(details[["tmdb_id", "release_date", "release_year", "release_status", "fetched_at",
                                "budget", "revenue", "vote_average", "vote_count"]],
                       left_on="member_id", right_on="tmdb_id", how="left", validate="many_to_one")
     assert len(m) == n, "member join changed the row count"
-    today = pd.Timestamp.now().normalize()
+    as_of = as_of_dates(m["fetched_at"])        # released as of the fetch date, not today
     m["on_list"] = m["member_id"].isin(films["tmdb_id"])
     m["details_fetched"] = m["tmdb_id"].notna()
-    m["released"] = m["release_status"].eq("Released").fillna(False) & m["release_date"].le(today).fillna(False)
+    m["released"] = m["release_status"].eq("Released").fillna(False) & m["release_date"].le(as_of).fillna(False)
     budget = m["budget"].astype("Float64").where(m["budget"].gt(0))
     revenue = m["revenue"].astype("Float64").where(m["revenue"].gt(0))
     m["usable"] = (m["released"] & budget.notna() & revenue.notna()).astype(bool)
@@ -124,8 +125,16 @@ def completeness(films: pd.DataFrame, members: pd.DataFrame, details: pd.DataFra
     return per_member, b[keep].sort_values("full_return", ascending=False, na_position="last")
 
 
-def headline(films: pd.DataFrame, per_bundle: pd.DataFrame) -> pd.DataFrame:
-    """Grain: one row per window. The franchise-vs-standalone comparison redone per WHOLE bundle."""
+def headline(films: pd.DataFrame, per_bundle: pd.DataFrame, per_member: pd.DataFrame) -> pd.DataFrame:
+    """Grain: one row per window. The franchise-vs-standalone comparison redone with complete bundles.
+
+    Two comparisons, on purpose:
+    - median_bundle_return_complete vs median_standalone_return compares a WHOLE BUNDLE with a
+      SINGLE FILM. That mixes levels deliberately: it is the choice Kwame actually faces, since a
+      bundle can only be bought whole and a standalone only on its own.
+    - median_film_return_complete vs median_standalone_return is the like-for-like check: every
+      released film in every franchise, film by film, against standalone films. If both point the
+      same way, the answer does not depend on which level is compared."""
     rows = []
     usable = films.loc[films["in_scope"].astype(bool) & films["usable_financials"].astype(bool)]
     for w, bmask, fmask in (
@@ -134,6 +143,8 @@ def headline(films: pd.DataFrame, per_bundle: pd.DataFrame) -> pd.DataFrame:
          usable["release_year"].ge(config.WINDOW_CUTOFF_YEAR)),
     ):
         pb = per_bundle.loc[bmask]
+        member_films = per_member.loc[per_member["usable"] & per_member["collection_id"].isin(pb["collection_id"])]
+        film_level = float(member_films["return_multiple"].astype("float64").median())
         st = usable.loc[fmask & usable["collection_id"].isna(), "return_multiple"]
         full = float(pb["full_return"].astype("float64").median())
         stand = float(st.astype("float64").median())
@@ -142,6 +153,10 @@ def headline(films: pd.DataFrame, per_bundle: pd.DataFrame) -> pd.DataFrame:
         rows.append({"window": w, "bundles": int(pb["full_return"].notna().sum()),
                      "median_bundle_return_list_only": float(pb["list_return"].astype("float64").median()),
                      "median_bundle_return_complete": full,
+                     "franchise_films_complete": len(member_films),
+                     "median_film_return_complete": film_level,
                      "standalones": len(st), "median_standalone_return": stand,
-                     "winner_complete_bundles": winner})
+                     "winner_complete_bundles": winner,
+                     "winner_film_level": ("insufficient data" if np.isnan(film_level) or np.isnan(stand)
+                                           else "franchise" if film_level > stand else "standalone")})
     return pd.DataFrame(rows)

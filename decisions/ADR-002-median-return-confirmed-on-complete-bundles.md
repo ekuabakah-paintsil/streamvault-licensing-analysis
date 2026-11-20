@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-11-19
-- **Decision owner:** Ekua Micah Abakah-Paintsil
+- **Decision owner:** Senya
 
 ## Context
 
@@ -28,6 +28,8 @@ A film with no TMDb collection is a standalone; any other film is a franchise en
 | **Per bundle, complete** | **4.36x vs 3.84x (32 bundles)** | **4.49x vs 3.84x (15 bundles)** |
 
 Franchises come out ahead in all 14 comparisons. Counting the missing films shrinks the lead from 46% to 14% across all years, and from 32% to 17% from 2000 on.
+
+The complete-bundle row compares a whole bundle with a single standalone film. That mixes levels on purpose: it is the choice Kwame faces, because a bundle can only be bought whole and a standalone only on its own. As a like-for-like check, every released film in every franchise was also compared film by film with the standalones: 5.06x against 3.84x across all years (132 franchise films) and 5.21x against 3.84x from 2000 on (54 films). Both levels point the same way, so the recommendation does not depend on which is compared. The memo quotes the bundle-level figures because they are the more cautious of the two.
 
 ## Alternatives considered
 

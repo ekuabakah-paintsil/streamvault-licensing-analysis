@@ -14,16 +14,25 @@ def norm_title(s: pd.Series) -> pd.Series:
     return s.fillna("").str.casefold().str.replace(r"[^0-9a-z]+", " ", regex=True).str.strip()
 
 
+def as_of_dates(fetched_at: pd.Series) -> pd.Series:
+    """The day each response was fetched (timezone-naive), used as the as-of date.
+    Falls back to today only for a row with no fetch time, which a cached film always has."""
+    stamp = pd.to_datetime(fetched_at, utc=True, errors="coerce").dt.tz_convert(None).dt.normalize()
+    return stamp.fillna(pd.Timestamp.now().normalize())
+
+
 def add_flags(films: pd.DataFrame) -> pd.DataFrame:
     f = films.copy()
-    today = pd.Timestamp.now().normalize()
+    # Judge "released" as of the date each film was fetched, not today's date, so the same
+    # cache always gives the same flags whenever and wherever it is rerun.
+    as_of = as_of_dates(f["fetched_at"])
     f["flag_id_redirected"] = f["returned_id"].ne(f["tmdb_id"])
     f["flag_budget_zero"] = f["budget"].fillna(0).eq(0)
     f["flag_revenue_zero"] = f["revenue"].fillna(0).eq(0)
     f["flag_budget_suspect"] = f["budget"].between(1, SUSPECT_MONEY - 1).fillna(False)
     f["flag_revenue_suspect"] = f["revenue"].between(1, SUSPECT_MONEY - 1).fillna(False)
     f["flag_no_release_date"] = f["release_date"].isna()
-    f["flag_not_released"] = f["release_status"].ne("Released") | f["release_date"].gt(today).fillna(False)
+    f["flag_not_released"] = f["release_status"].ne("Released") | f["release_date"].gt(as_of).fillna(False)
     f["flag_short_runtime"] = f["runtime"].lt(SHORT_RUNTIME).fillna(False)
     f["flag_adult_or_video"] = f["adult"].fillna(False).astype(bool) | f["video"].fillna(False).astype(bool)
     f["flag_low_votes"] = f["vote_count"].fillna(0).lt(50)
