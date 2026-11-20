@@ -28,7 +28,7 @@
 
 **Deal note.** *The Lord of the Rings* is the only top bundle with every film on your list and no weak entry. It earned 11 times its cost against 4.4 for the typical bundle, so pay up to about 2.5 times a typical bundle's price. The number that drove my view is 9.4: its weakest film beat the typical film of every other franchise since 2000.
 
-## What I could not stand behind, and what it costs you
+## What I could not stand behind
 
 - **Cinema earnings against production cost, from a public film database as of 18 November 2026, not licence prices, streaming results or studio records.** Cost: they rank titles and size premiums, but cannot say if a dollar price is fair.
 - **The franchise edge is about 15%,** against standalones that are all celebrated classics. Cost if overstated: a franchise premium paid for no gain, so keep premiums to complete, high-floor bundles.
