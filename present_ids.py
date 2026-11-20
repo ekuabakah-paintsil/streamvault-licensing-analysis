@@ -26,6 +26,8 @@ LABELS = {  # final_status -> (plain label, colour group, explanation for the ro
     "excluded_duplicate": ("Duplicate", "dup", "Same film already listed on an earlier line"),
     "excluded_not_found_on_tmdb": ("Not on TMDb", "bad", "TMDb has no film with this id"),
     "excluded_fetch_failed": ("Fetch failed", "bad", "Request failed after retries; re-run to retry"),
+    "excluded_failed_validation": ("Failed validation", "bad",
+                                   "Returned by TMDb but broke the data contract; see quarantine.csv"),
     "excluded_imdb_unresolved": ("IMDb id unresolved", "bad", "IMDb-format id with no single TMDb match"),
     "excluded_blank_line": ("Blank line", "bad", "Empty line in the file"),
     "excluded_invalid_number": ("Invalid id", "bad", "A number that cannot be a TMDb id"),

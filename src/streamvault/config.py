@@ -26,6 +26,7 @@ CREW_JOBS_KEPT = ("Director",)
 CAST_BILLING_KEPT = 10
 BUNDLE_FORMAT = "slim-v1"          # change this whenever the keep-rules change, so old bundles are rebuilt
 
+QUARANTINE_MAX_SHARE = 0.05      # if more than 5% of films break the data contract, stop: the source is broken
 MIN_GROUP_SIZE = 3                 # talent / collection stats below this are reported but flagged
 
 

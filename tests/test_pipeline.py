@@ -16,7 +16,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from streamvault import config, fetch, ids, pipeline  # noqa: E402
+from streamvault import checks, config, fetch, ids, pipeline, validate  # noqa: E402
 
 rng = np.random.default_rng(7)
 
@@ -55,9 +55,9 @@ def write(path: Path, body, status=200):
 FIXTURE = Path(__file__).resolve().parent / "fixture_id_list.csv"
 
 
-def test_real_id_list_reconciles(tmp: Path):
-    """Runs on a FROZEN copy of the 2026 list (tests/fixture_id_list.csv), not on
-    data/id_list.csv, so replacing the live list next year never breaks this test."""
+def build_fixture_cache(tmp: Path, broken: dict | None = None):
+    """Fake cache for the frozen list. `broken` maps a film id to fields that break the data contract."""
+    broken = broken or {}
     config.RAW = tmp / "raw"
     config.ID_LIST = FIXTURE
     # tt0468569 resolves to 155 (already on the list); huge ids 404; everything else is a fake film.
@@ -69,9 +69,16 @@ def test_real_id_list_reconciles(tmp: Path):
             write(config.RAW / "movie" / f"{c}.json", None, 404)
             write(config.RAW / "credits" / f"{c}.json", None, 404)
         else:
-            write(config.RAW / "movie" / f"{c}.json", fake_movie(int(c), 12))
+            write(config.RAW / "movie" / f"{c}.json", {**fake_movie(int(c), 12), **broken.get(int(c), {})})
             write(config.RAW / "credits" / f"{c}.json", fake_credits(int(c)))
     movies, credits, status = fetch.load_cache(cands)
+    return ledger, cands, movies, credits, status
+
+
+def test_real_id_list_reconciles(tmp: Path):
+    """Runs on a FROZEN copy of the 2026 list (tests/fixture_id_list.csv), not on
+    data/id_list.csv, so replacing the live list next year never breaks this test."""
+    ledger, _, movies, credits, status = build_fixture_cache(tmp)
     timer = pipeline.Timer()
     out = pipeline.run_analysis(movies, credits, status, ledger, timer)
     led = out["ledger"]
@@ -80,8 +87,40 @@ def test_real_id_list_reconciles(tmp: Path):
     assert counts.sum() == 127
     assert counts["excluded_duplicate"] == 7, counts   # 6 repeated ids + the IMDb id that resolves to 155
     assert counts["excluded_blank_line"] == 1
+    assert out["quarantine"].empty, out["quarantine"]          # clean data: nothing quarantined
+    checks.check_before_write(out, status)
     print("Reconciliation on the frozen 2026 id list (fake API data):")
     print(counts.to_string(), "\n")
+
+
+def test_validation_quarantines_broken_films(tmp: Path):
+    """Two films break the contract (negative budget, rating of 14). They must leave the analysis,
+    land in the quarantine with the rule they broke, and still be accounted for in the 127 lines."""
+    # each scenario gets its own folder, so its cache bundle is built from its own files
+    ledger, cands, *_ = build_fixture_cache(tmp / "clean")
+    ok_ids = [int(c) for c in cands if c < 5_000_000]
+    bad = {ok_ids[0]: {"budget": -1}, ok_ids[1]: {"vote_average": 14}}
+    ledger, _, movies, credits, status = build_fixture_cache(tmp / "two_broken", bad)
+    out = pipeline.run_analysis(movies, credits, status, ledger, pipeline.Timer())
+    led = out["ledger"]
+    assert len(led) == 127
+    failed = led.loc[led["final_status"].eq("excluded_failed_validation")]
+    assert set(failed["tmdb_id"]) == set(bad), failed
+    assert not out["films"]["tmdb_id"].isin(list(bad)).any(), "a quarantined film reached the analysis"
+    assert not out["cast"]["tmdb_id"].isin(list(bad)).any(), "a quarantined film's cast stayed in"
+    checks.check_before_write(out, status)                      # the gate still passes, with them counted
+    print("Validation quarantined 2 deliberately broken films:")
+    print(failed[["file_line", "tmdb_id", "note"]].to_string(index=False), "\n")
+
+    # Too many broken films means the source is broken: the run must stop, not analyse what is left
+    many = {i: {"budget": -1} for i in ok_ids[:10]}
+    ledger, _, movies, credits, status = build_fixture_cache(tmp / "ten_broken", many)
+    try:
+        pipeline.run_analysis(movies, credits, status, ledger, pipeline.Timer())
+    except validate.ContractBroken as e:
+        print("10 broken films stopped the run, as intended:", str(e).splitlines()[0], "\n")
+    else:
+        raise AssertionError("10 broken films should have stopped the run")
 
 
 NOTEBOOK = ROOT / "explore" / "profile_candidates.ipynb"
@@ -107,7 +146,8 @@ def time_at(n: int, tmp: Path) -> float:
 
 if __name__ == "__main__":
     with tempfile.TemporaryDirectory() as d:
-        test_real_id_list_reconciles(Path(d))
+        test_real_id_list_reconciles(Path(d) / "a")
+        test_validation_quarantines_broken_films(Path(d) / "b")
         test_notebook_has_no_saved_outputs()
         print("Analysis-stage timing on synthetic data (seconds):")
         base = None

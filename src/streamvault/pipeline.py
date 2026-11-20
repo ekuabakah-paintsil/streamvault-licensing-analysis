@@ -9,7 +9,7 @@ from contextlib import contextmanager
 import numpy as np
 import pandas as pd
 
-from . import analysis, config, fetch, flatten, ids, quality
+from . import analysis, config, fetch, flatten, ids, quality, validate
 
 
 class Timer:
@@ -66,7 +66,8 @@ def as_bool_array(mask: pd.Series):
     return mask.fillna(False).astype(bool).to_numpy()
 
 
-def finalise_ledger(led: pd.DataFrame, cache_status: pd.DataFrame, f: pd.DataFrame) -> pd.DataFrame:
+def finalise_ledger(led: pd.DataFrame, cache_status: pd.DataFrame, f: pd.DataFrame,
+                    quarantine: pd.DataFrame | None = None) -> pd.DataFrame:
     """Attach what happened to every candidate after fetching and scoping. Grain stays
     one row per line of the source file; the merges are validated so no line is lost or doubled."""
     n = len(led)
@@ -78,6 +79,8 @@ def finalise_ledger(led: pd.DataFrame, cache_status: pd.DataFrame, f: pd.DataFra
     assert len(out) == n, "ledger row count changed during merge"
 
     cand = out["id_status"].eq("candidate").to_numpy()
+    reasons = validate.quarantine_reasons(quarantine) if quarantine is not None else pd.Series(dtype=str)
+    failed_validation = out["tmdb_id"].isin(reasons.index)
     ms = out["movie_status"]                                   # FETCH_STATE; missing if never requested
     in_scope = out["in_scope"].astype("boolean")
     usable = out["usable_financials"].astype("boolean")
@@ -85,12 +88,14 @@ def finalise_ledger(led: pd.DataFrame, cache_status: pd.DataFrame, f: pd.DataFra
         [~cand,
          cand & as_bool_array(ms.eq("not_found")),
          cand & as_bool_array(ms.isna() | ms.eq("not_fetched")),
+         cand & as_bool_array(failed_validation),
          cand & as_bool_array(in_scope.eq(False)),
          cand & as_bool_array(usable.eq(True)),
          cand & as_bool_array(usable.eq(False))],
         [out["id_status"],
          "excluded_not_found_on_tmdb",
          "excluded_fetch_failed",
+         "excluded_failed_validation",
          "excluded_out_of_scope",
          "analysed_full",
          "analysed_no_usable_financials"],
@@ -105,10 +110,12 @@ def finalise_ledger(led: pd.DataFrame, cache_status: pd.DataFrame, f: pd.DataFra
         [out["final_status"].eq("excluded_out_of_scope").to_numpy(),
          out["final_status"].eq("excluded_not_found_on_tmdb").to_numpy(),
          out["final_status"].eq("excluded_fetch_failed").to_numpy(),
+         out["final_status"].eq("excluded_failed_validation").to_numpy(),
          as_bool_array(out["flag_id_redirected"].astype("boolean"))],
         [scope_reason,
          "TMDb returned 404: id does not exist (or was deleted)",
          "request failed after retries; re-run to retry",
+         "broke the data contract: " + out["tmdb_id"].map(reasons).fillna(""),
          "TMDb returned a different id: " + out["returned_id"].astype("string").fillna("")],
         default=out["note"].fillna(""))
     bad = out.loc[out["final_status"].eq("unexplained")]
@@ -121,6 +128,9 @@ def run_analysis(movies, credits, cache_status, ledger, timer: Timer) -> dict:
         films = flatten.films_table(movies)
         cast = flatten.cast_table(credits)
         crew = flatten.crew_table(credits)
+    with timer.stage("validate"):
+        # stops with ContractBroken if the structure is wrong or too many films fail
+        films, cast, crew, quarantine, validation = validate.validate(films, cast, crew)
         talent = flatten.talent_table(cast, crew)
     with timer.stage("flag_and_check"):
         flagged = quality.add_flags(films)
@@ -129,7 +139,7 @@ def run_analysis(movies, credits, cache_status, ledger, timer: Timer) -> dict:
     with timer.stage("prepare"):
         f = analysis.prepare(flagged)
     with timer.stage("reconcile_ledger"):
-        final_ledger = finalise_ledger(ledger, cache_status, f) if ledger is not None else None
+        final_ledger = finalise_ledger(ledger, cache_status, f, quarantine) if ledger is not None else None
     with timer.stage("kpis_both_windows"):
         # Each output table is built by one function, run once per window, then stacked.
         builders = {
@@ -151,6 +161,8 @@ def run_analysis(movies, credits, cache_status, ledger, timer: Timer) -> dict:
     return {
         "films": f, "cast": cast, "crew": crew, "talent": talent, "quality": q, "flag_examples": examples,
         "ledger": final_ledger,
+        "quarantine": quarantine,
+        "validation": validation,
         **kpis,
         "sensitivity": sens,
         "method_sensitivity": method_sens,

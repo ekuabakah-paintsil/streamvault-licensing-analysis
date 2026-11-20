@@ -8,11 +8,12 @@ It is built to be rerun every quarter by someone other than its author, on a lis
  data/id_list.csv
         │
         ▼
-   AUDIT ──────► FETCH ──────► FLATTEN ─────► FLAG ──────► ANALYSE ─────► QUALITY GATE ─────► WRITE
-   ids.py        fetch.py      flatten.py     quality.py   analysis.py    checks.py           outputs/
-   label every   once, cached, JSON to tables flag, never  both windows,  10 named checks;
-   line          throttled                    delete       7 measures     stops if any fails
-   └────────────────────── run in order, timed stage by stage, by run.py ──────────────────────┘
+   AUDIT ────► FETCH ────► FLATTEN ────► VALIDATE ────► FLAG ────► ANALYSE ────► QUALITY GATE ────► WRITE
+   ids.py      fetch.py    flatten.py    validate.py    quality.py analysis.py   checks.py          outputs/
+   label every once,       JSON to       data contract; flag,      both windows, 10 named checks;
+   line        cached,     tables        quarantine     never      7 measures    stops if any fails
+               throttled                 bad records    delete
+   └─────────────────────────── run in order, timed stage by stage, by run.py ───────────────────────────┘
 
    then, optionally:  improvement/bundle_check.py   every film in every franchise
                       spot_check.py                 output against live TMDb
@@ -79,6 +80,8 @@ In this order, from this folder:
 | `No TMDb credentials found` | `.env` is missing, or not next to `run.py` | Create it as in Setup |
 | `TMDb refused the key (HTTP 401)` | The key is wrong, or the line is not named `TMDB_API_KEY` | Check `.env`. The run stops at once instead of making failed requests |
 | `No cached films found` | `--offline` used before anything was fetched | Run once without `--offline` |
+| `The film table is missing columns` | TMDb changed the format of its responses | Nothing is written. Compare a cached file in `data/raw/movie/` with [`data_contract.md`](data_contract.md) and update `flatten.py` |
+| `... films failed validation, more than the 5% allowed` | Many films broke the data contract at once, so the source is broken, not a few records | Nothing is written. The message lists every film and the rule it broke |
 | `Quality checks failed, no outputs written` | The analysis lost, doubled or misplaced a film | The message names the failed checks. Nothing is written, so no half-wrong file reaches a meeting |
 | `Analysis stage: ... (OVER the 5s budget)` | The laptop is much slower, or the list is far larger | See [`measurement_report.md`](measurement_report.md) and [`decisions/ADR-005-fetch-once-and-hold-a-5-second-budget.md`](decisions/ADR-005-fetch-once-and-hold-a-5-second-budget.md) for the documented fix |
 | Requests time out | Network or TMDb trouble | Run again. Only the missing ids are fetched; failed requests are never cached |
@@ -97,6 +100,7 @@ In this order, from this folder:
 | `explore/` | `profile_candidates.ipynb`: profiles the raw list and TMDb's raw answers | Investigation, independent of the analysis. Committed with no saved outputs, so no data is in version control; `tests/test_pipeline.py` fails if any cell has outputs |
 | `tests/` | Self-test (on a frozen copy of this year's list) and the benchmark | Prove the code works before it touches real data |
 | `decisions/` | Architecture decision records, ADR-001 to ADR-005 | The reasons behind the code, versioned with it |
+| `data_contract.md` | What every pulled record must satisfy, and what happens when one does not | The rules `validate.py` enforces, in plain language |
 | `data_diagnosis.md` | Every problem in the data, ranked by risk, and where every line went | Deliverable: data diagnosis |
 | `client_memo.md` | One-page memo to Kwame | Deliverable: client memo |
 | `measurement_report.md` | Timing against the 5-second budget | Deliverable: measured time budget |
@@ -117,6 +121,8 @@ In this order, from this folder:
 | `films.csv` | film | Every field, derived value and quality flag |
 | `cast.csv`, `crew.csv` | film and person | Top 10 cast and the directors of each film, for lookups. Complete credits are in `data/raw/credits/` |
 | `talent.csv` | film, director or top-3 actor | What the talent analysis uses |
+| `validation.csv` | contract rule | How many films, cast and crew rows each rule checked, and how many failed |
+| `quarantine.csv` | record and broken rule | Every record removed by validation, with the rule it broke. Empty on a clean run |
 | `quality.csv`, `flag_examples.csv` | check / flagged film | Data-quality evidence |
 | `checks.csv` | quality-gate check | The 10 checks that must pass before anything is written |
 | `kpi_segments.csv` | segment and window | Franchise against standalone, with group sizes |
@@ -137,9 +143,10 @@ In this order, from this folder:
 ## How the work is checked
 
 - **Every line accounted for:** the outcome counts must add up to the number of lines in the list, or the run stops.
+- **Every record checked on arrival:** `validate.py` checks each film and credit against the data contract before analysis; a broken record is quarantined, named in `quarantine.csv` and still counted in the ledger as `excluded_failed_validation`.
 - **No film lost or doubled:** every merge is validated as many-to-one, and the quality gate re-checks the film count before writing.
 - **Independent of itself:** the profiling notebook reaches the same counts from the raw data by a separate route.
 - **Against the source:** the spot-check compares 16 films with live TMDb and classifies any difference as an analysis error or a change at TMDb.
 - **Across versions:** every output was compared file by file on pandas 2.2 and 3.0.
 
-Author: Ekua Micah Abakah-Paintsil
+Author: WISDOMSKA (SENYA)

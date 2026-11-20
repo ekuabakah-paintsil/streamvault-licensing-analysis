@@ -20,6 +20,7 @@ def _results(out: dict, cache_status: pd.DataFrame) -> list[tuple[str, bool, str
     led, films, cast, crew, talent = (out[k] for k in ("ledger", "films", "cast", "crew", "talent"))
     seg = out["kpi_segments"]
     found = int(cache_status["movie_status"].eq("found").sum())
+    quarantined = int(out["quarantine"].loc[out["quarantine"]["level"].eq("film"), "tmdb_id"].nunique())
     counts = led["final_status"].value_counts()
     in_scope = films.loc[films["in_scope"]]
     per_window = {"all_years": len(in_scope), "2000_on": int(in_scope["window_2000_on"].sum())}
@@ -31,8 +32,8 @@ def _results(out: dict, cache_status: pd.DataFrame) -> list[tuple[str, bool, str
          f"{int(counts.sum())} outcomes for {len(led)} lines"),
         ("one row per film",
          bool(films["tmdb_id"].is_unique), f"{len(films)} rows, {films['tmdb_id'].nunique()} distinct films"),
-        ("every film TMDb returned is in the film table",
-         found == len(films), f"{found} found, {len(films)} in table"),
+        ("every film TMDb returned is analysed or quarantined",
+         found == len(films) + quarantined, f"{found} found = {len(films)} in table + {quarantined} quarantined"),
         ("ledger and film table agree on films analysed",
          int(led["final_status"].str.startswith("analysed").sum()) == len(in_scope),
          f"{int(led['final_status'].str.startswith('analysed').sum())} in ledger, {len(in_scope)} in scope"),
