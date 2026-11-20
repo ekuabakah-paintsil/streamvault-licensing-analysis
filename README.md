@@ -104,7 +104,7 @@ In this order, from this folder:
 | `data_diagnosis.md` | Every problem in the data, ranked by risk, and where every line went | Deliverable: data diagnosis |
 | `client_memo.md` | One-page memo to Kwame | Deliverable: client memo |
 | `measurement_report.md` | Timing against the 5-second budget | Deliverable: measured time budget |
-| `evidence/` | Saved console output from key runs | Records of what happened when, which a rerun cannot reproduce |
+| `evidence/` | Saved console output from key runs, indexed in [`evidence/README.md`](evidence/README.md) | Records of what happened when, which a rerun cannot reproduce |
 | `data/id_list.csv` | The candidate list exactly as received | Never edited; its faults are handled in code |
 | `data/raw/` | Every TMDb response, cached with its fetch time and status | Generated, never committed |
 | `outputs/` | Everything the analysis writes | Generated, never committed |
@@ -149,4 +149,4 @@ In this order, from this folder:
 - **Against the source:** the spot-check compares 16 films with live TMDb and classifies any difference as an analysis error or a change at TMDb.
 - **Across versions:** every output was compared file by file on pandas 2.2 and 3.0.
 
-Author: WISDOMSKA (SENYA)
+Author: Ekua Micah Abakah-Paintsil

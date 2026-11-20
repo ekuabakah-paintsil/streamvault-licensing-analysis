@@ -1,6 +1,6 @@
 # Evidence
 
-Console output saved from key runs on the analyst's laptop (Windows 11). These are records of what happened at a point in time, which a rerun cannot reproduce exactly (live TMDb answers, an idle laptop). All files are plain UTF-8 text.
+Console output saved from key runs on the analyst's laptop (Windows 11). These are records of what happened at a point in time, which a rerun cannot reproduce exactly (live TMDb answers, an idle laptop).
 
 | File | What it records | Supports |
 |---|---|---|
