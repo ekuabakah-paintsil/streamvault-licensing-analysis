@@ -115,7 +115,7 @@ def finalise_ledger(led: pd.DataFrame, cache_status: pd.DataFrame, f: pd.DataFra
         [scope_reason,
          "TMDb returned 404: id does not exist (or was deleted)",
          "request failed after retries; re-run to retry",
-         "broke the data contract: " + out["tmdb_id"].map(reasons).fillna(""),
+                  "broke the data contract: " + out["tmdb_id"].map(reasons).astype("string").fillna(""),
          "TMDb returned a different id: " + out["returned_id"].astype("string").fillna("")],
         default=out["note"].fillna(""))
     bad = out.loc[out["final_status"].eq("unexplained")]
