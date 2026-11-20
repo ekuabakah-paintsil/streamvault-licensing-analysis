@@ -2,7 +2,7 @@
 
 **From:** Ekua Micah Abakah-Paintsil
 
-**Date:** 20 November 2026
+**Date:** 19 November 2026
 
 **Subject:** Franchise bundles or standalone hits
 
