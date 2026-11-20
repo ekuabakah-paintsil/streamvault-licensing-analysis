@@ -13,6 +13,7 @@ Looping here is over network requests, not over DataFrame rows.
 from __future__ import annotations
 
 import json
+import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -62,6 +63,17 @@ def _get(session, url: str, params: dict | None = None) -> tuple[int, dict | Non
     return r.status_code, r.json()
 
 
+def _write_atomic(path: Path, text: str) -> None:
+    """Write a file so it is either complete or absent, never half-written.
+    The text goes to a temporary file in the same folder, which is then renamed over the
+    target in one step (os.replace is atomic on Windows and Linux). If the run is killed
+    mid-write, only the temporary file is left, and the next run ignores and replaces it."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def fetch_one(session, endpoint: str, tmdb_id: int, log: list) -> None:
     path = _cache_path(endpoint, tmdb_id)
     if path.exists():
@@ -81,7 +93,7 @@ def fetch_one(session, endpoint: str, tmdb_id: int, log: list) -> None:
         return
     payload = {"_fetched_at": fetched_at, "_http_status": status, "_requested_id": int(tmdb_id),
                "body": body}
-    path.write_text(json.dumps(payload), encoding="utf-8")
+    _write_atomic(path, json.dumps(payload))
     log.append({"endpoint": endpoint, "tmdb_id": tmdb_id, "source": "network",
                 "http_status": status, "fetched_at": fetched_at})
     time.sleep(config.THROTTLE_SECONDS)
@@ -96,12 +108,21 @@ def resolve_imdb_ids(session, imdb_ids: list[str], log: list) -> dict[str, int |
             if session is None:
                 out[imdb] = None
                 continue
-            path.parent.mkdir(parents=True, exist_ok=True)
             fetched_at = _now()
-            status, body = _get(session, f"{config.API_BASE}/find/{imdb}",
-                                params={"external_source": "imdb_id"})
-            path.write_text(json.dumps({"_fetched_at": fetched_at, "_http_status": status,
-                                        "body": body}), encoding="utf-8")
+            try:
+                status, body = _get(session, f"{config.API_BASE}/find/{imdb}",
+                                    params={"external_source": "imdb_id"})
+            except AuthError:
+                raise
+            except requests.RequestException as exc:
+                # Same rule as fetch_one: log it, leave it uncached, retry on the next run.
+                # This run labels the line "excluded_imdb_unresolved" rather than crashing.
+                log.append({"endpoint": "find", "tmdb_id": imdb, "source": "network",
+                            "http_status": None, "fetched_at": fetched_at, "error": str(exc)[:200]})
+                out[imdb] = None
+                continue
+            _write_atomic(path, json.dumps({"_fetched_at": fetched_at, "_http_status": status,
+                                            "body": body}))
             log.append({"endpoint": "find", "tmdb_id": imdb, "source": "network",
                         "http_status": status, "fetched_at": fetched_at})
             time.sleep(config.THROTTLE_SECONDS)
@@ -166,7 +187,7 @@ def build_bundles(ids) -> None:
             # None records "not fetched (yet)" so the bundle still covers every id
             bundle[str(int(tmdb_id))] = (_slim(endpoint, json.loads(p.read_text(encoding="utf-8")))
                                          if p.exists() else None)
-        _bundle_path(endpoint).write_text(json.dumps(bundle), encoding="utf-8")
+        _write_atomic(_bundle_path(endpoint), json.dumps(bundle))
 
 
 def _read_bundle(endpoint: str, ids) -> dict | None:
@@ -175,7 +196,10 @@ def _read_bundle(endpoint: str, ids) -> dict | None:
     path = _bundle_path(endpoint)
     if not path.exists():
         return None
-    bundle = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        bundle = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:          # damaged copy (e.g. written by an older version): rebuild
+        return None
     if bundle.get("_format") != config.BUNDLE_FORMAT:
         return None
     return bundle if all(str(int(i)) in bundle for i in ids) else None
