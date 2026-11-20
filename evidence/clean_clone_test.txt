@@ -1,9 +1,16 @@
-Clean-clone test, 20 November 2026
+Clean-clone test, 20 November 2026 (rerun after the validation stage was added)
 Fresh clone of the GitHub repository into a new, empty folder on the analyst's laptop, set up by
-following README.md only: create .venv, pip install -r requirements.txt, copy .env.example to .env
-and add the TMDb key (the one manual step), then run the two commands below. No cache, no outputs
+following README.md only: create .venv, pip install -r requirements-lock.txt, copy .env.example to
+.env and add the TMDb key (the one manual step), then run the commands below. No cache, no outputs
 and no files were copied from the working folder. The fetch is a brand-new pull from TMDb, two days
 after the original one on 18 November, and every figure matches.
+
+What this run shows about validation:
+- The self-test quarantines two deliberately broken films and accounts for them in the ledger, and
+  stops the run when 10 films (9%) break the data contract, above the 5% limit.
+- On the real data, no film was quarantined: no line in the ledger is excluded_failed_validation,
+  and all 112 films reached the analysis.
+- The validate stage took 0.022 s, inside the 5 s budget with the rest of the analysis.
 
 > python tests/test_pipeline.py
 
@@ -18,10 +25,19 @@ excluded_invalid_number           1
 excluded_blank_line               1
 excluded_not_an_id                1
 
+Validation quarantined 2 deliberately broken films:
+ file_line  tmdb_id                                                     note
+         2      155 broke the data contract: budget present and not negative
+         3      165         broke the data contract: rating between 0 and 10
+
+10 broken films stopped the run, as intended: 10 of 112 films (9%) failed validation, more than the 5% allowed: the source looks broken, so the run stops rather than analysing what is left.
+
+Notebook profile_candidates.ipynb: 30 cells, none with saved outputs.
+
 Analysis-stage timing on synthetic data (seconds):
-    127 titles: 0.323s  (1.0x the 127-title time)
-    500 titles: 0.285s  (0.9x the 127-title time)
-   5000 titles: 0.626s  (1.9x the 127-title time)
+    127 titles: 0.292s  (1.0x the 127-title time)
+    500 titles: 0.300s  (1.0x the 127-title time)
+   5000 titles: 0.580s  (2.0x the 127-title time)
 
 All checks passed.
 
@@ -50,19 +66,24 @@ Franchise vs standalone (median revenue/budget, usable n):
 Cleaning-rule variants that flip the answer: 0
 
 Network calls this run: 235
-Analysis stage: 0.395s (WITHIN the 5s budget)
+Analysis stage: 0.409s (WITHIN the 5s budget)
 
 Quality gate: 10 of 10 checks passed
 
 Per stage:
                                       stage  seconds
-acquisition (network, excluded from budget)   92.728
-                                 load_cache    0.051
-                                    flatten    0.029
+acquisition (network, excluded from budget)   84.320
+                                 load_cache    0.038
+                                    flatten    0.026
+                                   validate    0.022
                              flag_and_check    0.019
-                                    prepare    0.008
-                           reconcile_ledger    0.010
-                          kpis_both_windows    0.091
-                                sensitivity    0.142
+                                    prepare    0.006
+                           reconcile_ledger    0.012
+                          kpis_both_windows    0.084
+                                sensitivity    0.151
                                quality_gate    0.003
-                              write_outputs    0.042
+                              write_outputs    0.048
+
+> python present_ids.py
+
+Wrote outputs\id_breakdown.html  (127 lines -> 117 distinct ids -> 112 analysed)
