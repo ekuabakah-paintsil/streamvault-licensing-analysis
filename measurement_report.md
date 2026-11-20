@@ -6,7 +6,7 @@
 
 The brief asks for the analysis to run "inside the client's time budget, measured" but never states the budget as a number, so this target is mine (ADR-005). I chose 5 seconds because Adjoa will sometimes rerun the analysis live in a meeting, where anything longer means people waiting on a screen. The target applies to the worst run, not the typical one, because the run that matters is the one made in the room.
 
-The budget covers the analysis from the cache: reading the cached data, flattening, quality flags, every figure in both time windows, the robustness checks, the quality gate and writing the outputs. It excludes fetching from TMDb, which happens once per new title, takes as long as the network does (87 seconds for this year's 235 requests), and is never repeated in a meeting.
+The budget covers the analysis from the cache: reading the cached data, flattening, validation against the data contract, quality flags, every figure in both time windows, the robustness checks, the quality gate and writing the outputs. It excludes fetching from TMDb, which happens once per new title, takes as long as the network does (87 seconds for this year's 235 requests), and is never repeated in a meeting.
 
 ## Method
 
